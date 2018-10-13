@@ -17,6 +17,6 @@ class Main:
                 line = fp.readline()
         
         solver = acoc.ACOCsolver()
-        solver.solve(objects)
+        solver.solve(objects, 4)
     
 Main.run()

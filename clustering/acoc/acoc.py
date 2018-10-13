@@ -144,13 +144,18 @@ class ACOC:
                 bestClustering = clusterings[0]
             for r in range(0, eliteAntsNumber):
                 self.updatePheromone(clusterings[r][0], clusterings[r][1], graph.nodes, p)
+        return bestClustering[1]
 
 class ACOCsolver(solver.Solver):
 
-    def solve(self, objects):
+    def solve(self, objects, clustersNumber):
         graph = Graph(len(objects))
         cont = 0
         for o in objects:
             graph.addNode(Node(cont, o[0], o[1]))
             cont = cont+1
-        ACOC().run(4, 1, 2, 0.0001, 0.7, 0.8, 0.1, 1000, 10, 1, graph, EuclideanSimilarityCalculator())
+        clusters = ACOC().run(clustersNumber, 1, 2, 0.0001, 0.7, 0.8, 0.1, 1000, 10, 1, graph, EuclideanSimilarityCalculator())
+        '''for cluster in clusters:
+            for i in range(0, len(cluster)):
+                cluster[i] = cluster[i].id'''
+        return clusters
