@@ -8,43 +8,97 @@ class SimilarityCalculator(ABC):
     def calculateWeight(self, attribute1, attribute2):
         pass
 
-    def calculateCentroid(self, cluster, newNode):
+    def calculateCentroidWithNewNode(self, cluster, newNode):
+        pass
+
+    def calculateCentroidWithDeletedNode(self, cluster, deletedNode):
         pass
 
 class EuclideanSimilarityCalculator(SimilarityCalculator):
 
     def calculateWeight(self, attribute1, attribute2):
+        attribute1 = numpy.asarray(attribute1)
+        attribute2 = numpy.asarray(attribute2)
         return numpy.linalg.norm(attribute1-attribute2)
 
-    def calculateCentroid(self, cluster, newNode):
+    def calculateCentroidWithNewNode(self, cluster, newNode):
         attributes = [0]*len(newNode.attributes)
-        for node in cluster.nodes:
+        for node in cluster.getNodes():
             for i in range(0, len(attributes)):
                 attributes[i] = attributes[i] + node.attributes[i]
         for i in range(0, len(attributes)):
-            attributes[i] = attributes[i]/len(cluster)
+            attributes[i] = attributes[i]/cluster.size
         return attributes
+
+    def calculateCentroidWithDeletedNode(self, cluster, deletedNode):
+        pass
+
+class ImprovedEuclideanSimilarityCalculator(EuclideanSimilarityCalculator):
+
+    def calculateCentroidWithNewNode(self, cluster, newNode):
+        attributes = [0]*len(newNode.attributes)
+        if cluster.size == 1:
+            attributes = newNode.attributes.copy()
+            return attributes
+        for i in range(0, len(attributes)):
+            attributes[i] = (cluster.centroid[i]*(cluster.size-1)+newNode.attributes[i])/cluster.size
+        return attributes
+
+    def calculateCentroidWithDeletedNode(self, cluster, deletedNode):
+        attributes = [0]*len(deletedNode.attributes)
+        if cluster.size == 0:
+            return -1
+        for i in range(0, len(attributes)):
+            attributes[i] = (cluster.centroid[i]*(cluster.size+1)-deletedNode.attributes[i])/cluster.size
+        return attributes
+
 
 class Node:
 
-    def __init__(self, id, clustersPheromone, attributes):
+    def __init__(self, id, attributes):
         self.id = id
-        self.clustersPheromone = clustersPheromone
+        self.clustersPheromone = 0
         self.attributes = attributes
 
 class Cluster:
 
     def __init__(self, similarityCalculator):
+        self.size = 0
         self.nodes = []
         self.centroid = -1
         self.similarityCalculator = similarityCalculator
+        self.modified = False
+        self.temp = []
 
-    def updateCentroid(self, newNode):
-        self.centroid = self.similarityCalculator.calculateCentroid(self, newNode)
+    def updateCentroidWithNewNode(self, newNode):
+        self.centroid = self.similarityCalculator.calculateCentroidWithNewNode(self, newNode)
+
+    def updateCentroidWithDeletedNode(self, deletedNode):
+        self.centroid = self.similarityCalculator.calculateCentroidWithDeletedNode(self, deletedNode)
 
     def addNode(self, node):
+        self.modified = True
+        self.size = self.size + 1
         self.nodes.append(node)
-        self.updateCentroid(node)
+        self.updateCentroidWithNewNode(node)
+
+    def removeNode(self, pos):
+        self.modified = True
+        self.size = self.size - 1
+        temp = self.nodes[pos]
+        self.nodes[pos] = None
+        self.updateCentroidWithDeletedNode(temp)
+        
+    def getNodes(self):
+        if self.modified == False:
+            return self.temp
+        self.modified = False
+        self.temp = []
+        for node in self.nodes:
+            if node != None:
+                self.temp.append(node)
+        return self.temp
+
 
     def isEmpty(self):
         if len(self.nodes) == 0:
@@ -66,7 +120,7 @@ class AntTransitionRule(TransitionRule):
         self.similarityCalculator = similarityCalculator
 
     def getCluster(self, node, clusters):
-        prob = []
+        prob = [0]*len(clusters)
         cumSum = 0
         for i in range(0, len(clusters)):
             if clusters[i].isEmpty() == True:
@@ -91,16 +145,15 @@ class AntTransitionRule(TransitionRule):
 class Ant:
 
     def __init__(self, clustersNumber, transitionRule):
-        self.clusters = [Cluster(transitionRule.similarityCalculator)]*clustersNumber
+        self.clusters = [Cluster(transitionRule.similarityCalculator) for c in range(0, clustersNumber)]
         self.transitionRule = transitionRule
 
     def move(self, nodes):
-        nodes = nodes.copy()
-        random.shuffle(nodes)
-        while len(nodes) > 0:
-            currentNode = nodes.remove(0)
-            cluster = self.transitionRule.getCluster(currentNode, self.clusters)
-            self.clusters[cluster].addNode(currentNode)
+        shuffledNodes = nodes.copy()
+        random.shuffle(shuffledNodes)
+        for node in shuffledNodes:
+            cluster = self.transitionRule.getCluster(node, self.clusters)
+            self.clusters[cluster].addNode(node)
             
 class Graph:
 
@@ -119,31 +172,55 @@ class ACOC:
                 f = f + similarityCalculator.calculateWeight(node.attributes, cluster.centroid)
         return f
 
-    def updatePheromone(self, quality, clustering, nodes, p):
+    def updatePheromone(self, quality, clustering, p, Q):
         for i in range(0, len(clustering)):
-            for node in clustering[i].nodes:
+            for node in clustering[i].getNodes():
                 for j in range(0, len(node.clustersPheromone)):
                     node.clustersPheromone[j] = node.clustersPheromone[j]*(1-p)
                     if i==j:
-                        node.clustersPheromone[j] += 1/quality
-                    
-    def run(self, clustersNumber, a, b, q0, t01, t02, p, iterations, antsNumber, eliteAntsNumber, graph, similarityCalculator):
+                        node.clustersPheromone[j] += Q/quality
+
+    def localSearch(self, clusters, similarityCalculator):
+        nodes = [None]*len(clusters)
+        for c in range(0, len(clusters)):
+            nodes[c] = clusters[c].getNodes()
+        for c in range(0, len(clusters)):   
+            for n in range(0, len(nodes[c])):
+                minimum = similarityCalculator.calculateWeight(clusters[c].centroid, nodes[c][n].attributes)
+                best = c
+                for c1 in range(0, len(clusters)):
+                    if c1 != c:
+                        if clusters[c1].size == 0:
+                            minimum = 0
+                            best = c1
+                        else:
+                            temp = similarityCalculator.calculateWeight(clusters[c1].centroid, nodes[c][n].attributes)
+                            if temp < minimum:
+                                minimum = temp
+                                best = c1
+                if best != c:
+                    clusters[c].removeNode(n)
+                    clusters[best].addNode(nodes[c][n])
+
+    def run(self, clustersNumber, a, b, q0, t01, t02, p, Q, iterations, antsNumber, graph, similarityCalculator):
         transitionRule = AntTransitionRule(a, b, q0, similarityCalculator)
         for node in graph.nodes:
             node.clustersPheromone = [(t02-t01)*numpy.random.random_sample()+t01]*clustersNumber
         bestClustering = (None, None)
         while iterations>0:
             iterations = iterations-1
-            ants = [Ant(clustersNumber, transitionRule)]* antsNumber
-            clusterings = []
+            ants = [Ant(clustersNumber, transitionRule) for a in range(0, antsNumber)]
+            tempBestClustering = (None, None)
             for ant in ants:
                 ant.move(graph.nodes)
-                clusterings.append((self.calculateObjectiveFunction(ant.clusters, similarityCalculator), ant.clusters))
-            clusterings.sort()
-            if bestClustering[0] == None or clusterings[0][0] < bestClustering[0]:
-                bestClustering = clusterings[0]
-            for r in range(0, eliteAntsNumber):
-                self.updatePheromone(clusterings[r][0], clusterings[r][1], graph.nodes, p)
+                temp = (self.calculateObjectiveFunction(ant.clusters, similarityCalculator), ant.clusters)
+                if tempBestClustering[0] == None or temp[0] < tempBestClustering[0]:
+                    tempBestClustering = temp
+            self.localSearch(tempBestClustering[1], similarityCalculator)
+            if bestClustering[0] == None or tempBestClustering[0] < bestClustering[0]:
+                bestClustering = tempBestClustering
+            self.updatePheromone(tempBestClustering[0], tempBestClustering[1], p, Q)
+        print("Best error: "+str(bestClustering[0]))
         return bestClustering[1]
 
 class ACOCsolver(solver.Solver):
@@ -152,10 +229,12 @@ class ACOCsolver(solver.Solver):
         graph = Graph(len(objects))
         cont = 0
         for o in objects:
-            graph.addNode(Node(cont, o[0], o[1]))
+            graph.addNode(Node(cont, list(o)))
             cont = cont+1
-        clusters = ACOC().run(clustersNumber, 1, 2, 0.0001, 0.7, 0.8, 0.1, 1000, 10, 1, graph, EuclideanSimilarityCalculator())
-        '''for cluster in clusters:
-            for i in range(0, len(cluster)):
-                cluster[i] = cluster[i].id'''
+        clusters = ACOC().run(clustersNumber, 1, 6, 0.8, 0.99, 1.01, 0.6, 5, 200, 12, graph, ImprovedEuclideanSimilarityCalculator())
+        for c in range(0, len(clusters)):
+            nodes = clusters[c].getNodes()
+            for i in range(0, len(nodes)):
+                nodes[i] = nodes[i].attributes
+            clusters[c] = nodes
         return clusters
