@@ -1,7 +1,9 @@
 import random
 import numpy
+import math
 from abc import ABC, abstractmethod
 import solver
+from line_profiler import LineProfiler
 
 class SimilarityCalculator(ABC):
 
@@ -17,6 +19,9 @@ class SimilarityCalculator(ABC):
 class EuclideanSimilarityCalculator(SimilarityCalculator):
 
     def calculateWeight(self, attribute1, attribute2):
+        #dist = [(a - b)**2 for a, b in zip(attribute1, attribute2)]
+        #dist = math.sqrt(sum(dist))
+        #return dist
         attribute1 = numpy.asarray(attribute1)
         attribute2 = numpy.asarray(attribute2)
         return numpy.linalg.norm(attribute1-attribute2)
@@ -34,6 +39,11 @@ class EuclideanSimilarityCalculator(SimilarityCalculator):
         pass
 
 class ImprovedEuclideanSimilarityCalculator(EuclideanSimilarityCalculator):
+
+    def calculateWeight(self, attribute1, attribute2):
+        temp1 = attribute1[0]-attribute2[0]
+        temp2 = attribute1[1]-attribute2[1]
+        return (temp1*temp1+temp2*temp2)**0.5
 
     def calculateCentroidWithNewNode(self, cluster, newNode):
         attributes = [0]*len(newNode.attributes)
@@ -98,13 +108,6 @@ class Cluster:
             if node != None:
                 self.temp.append(node)
         return self.temp
-
-
-    def isEmpty(self):
-        if len(self.nodes) == 0:
-            return True
-        else:
-            return False
      
 class TransitionRule(ABC):
 
@@ -118,16 +121,17 @@ class AntTransitionRule(TransitionRule):
         self.b = b
         self.q0 = q0
         self.similarityCalculator = similarityCalculator
-
+        self.calculateWeight = similarityCalculator.calculateWeight
+    
     def getCluster(self, node, clusters):
         prob = [0]*len(clusters)
         cumSum = 0
         for i in range(0, len(clusters)):
-            if clusters[i].isEmpty() == True:
+            if clusters[i].size == 0:
                 relativeWeight = 1
             else:
-                relativeWeight = 1/self.similarityCalculator.calculateWeight(node.attributes, clusters[i].centroid)
-            prob[i] = pow(relativeWeight, self.b)*pow(node.clustersPheromone[i], self.a)
+                relativeWeight = 1/self.calculateWeight(node.attributes, clusters[i].centroid)
+            prob[i] = (relativeWeight**self.b)*(node.clustersPheromone[i]**self.a)
             cumSum = cumSum + prob[i]
         exploitationRes = 0
         exploitationMax = 0
@@ -231,7 +235,7 @@ class ACOCsolver(solver.Solver):
         for o in objects:
             graph.addNode(Node(cont, list(o)))
             cont = cont+1
-        clusters = ACOC().run(clustersNumber, 1, 6, 0.8, 0.99, 1.01, 0.6, 5, 200, 12, graph, ImprovedEuclideanSimilarityCalculator())
+        clusters = ACOC().run(clustersNumber, 1, 6, 0.8, 0.99, 1.01, 0.6, 5, 80, 12, graph, ImprovedEuclideanSimilarityCalculator())
         for c in range(0, len(clusters)):
             nodes = clusters[c].getNodes()
             for i in range(0, len(nodes)):

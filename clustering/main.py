@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+from line_profiler import LineProfiler
+
 
 class Main:
 
@@ -42,6 +44,7 @@ class Main:
                 objects.append((int(xy[0]), int(xy[1])))
                 line = fp.readline()
         
+        lp = LineProfiler()
         solver = acoc.ACOCsolver()
         clusters = solver.solve(objects, 4)
         Main.plot(clusters)
