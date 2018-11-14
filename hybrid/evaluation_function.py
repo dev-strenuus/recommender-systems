@@ -1,13 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on 21/10/2018
-
-@author: Maurizio Ferrari Dacrema
-"""
-
 import numpy as np
 import scipy.sparse as sps
+import builder
 
 
 
@@ -44,7 +37,7 @@ def MAP(is_relevant, relevant_items):
 
 
 
-def evaluate_algorithm(URM_test, recommender_object, at=5):
+def evaluate_algorithm(URM_test, recommender_object, at, builder):
 
     cumulative_precision = 0.0
     cumulative_recall = 0.0
@@ -54,13 +47,34 @@ def evaluate_algorithm(URM_test, recommender_object, at=5):
 
     URM_test = sps.csr_matrix(URM_test)
 
-    n_users = URM_test.shape[0]
+    ordered_target_playlists = builder.get_ordered_target_playlists()
+    unordered_target_playlists = builder.get_unordered_target_playlists()
 
+    for i in range(len(ordered_target_playlists)):
+        
+        user_id = ordered_target_playlists[i]
 
-    for user_id in range(n_users):
+        start_pos = URM_test.indptr[user_id]
+        end_pos = URM_test.indptr[user_id+1]
 
-        if user_id % 10000 == 0:
-            print("Evaluated user {} of {}".format(user_id, n_users))
+        if end_pos-start_pos>0:
+
+            relevant_items = URM_test.indices[start_pos:end_pos]
+
+            recommended_items = recommender_object.recommend(user_id, at=at)
+            num_eval+=1
+
+            is_relevant = np.in1d(recommended_items, relevant_items, assume_unique=True)
+
+            cumulative_precision += precision(is_relevant, relevant_items)
+            cumulative_recall += recall(is_relevant, relevant_items)
+            cumulative_MAP += MAP(is_relevant, relevant_items)
+            
+    print("ordered finished")
+        
+    for i in range(len(unordered_target_playlists)):
+        
+        user_id = unordered_target_playlists[i]
 
         start_pos = URM_test.indptr[user_id]
         end_pos = URM_test.indptr[user_id+1]
