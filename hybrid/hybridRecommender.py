@@ -1,13 +1,9 @@
 import random
 import numpy as np
-class hybridRecommender():
+class hybridRecommender(object):
 
-    def merge(self, a, b, contentSimilarity, collaborativeSimilarity):
-        hybridMatrix = a*contentSimilarity + b*collaborativeSimilarity
-        return hybridMatrix
-
-    def __init__(self, contentSimilarity, collaborativeSimilarity, a):
-        self.bestSimilarTracks = self.merge(a, 1.0, contentSimilarity, collaborativeSimilarity)
+    def __init__(self, contentSimilarity, collaborativeSimilarity, a, b):
+        self.bestSimilarTracks = a*contentSimilarity + b*collaborativeSimilarity
         self.cont = -1
     
     def recommend(self, playlist, builder):
