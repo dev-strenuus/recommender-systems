@@ -104,11 +104,11 @@ class HybridRecommender(object):
         for k in content_ratings:
             if k in collaborative_ratings:
                 collaborative_ratings[k] = collaborative_ratings[k] + content_ratings[k]
-        #best = collaborative_ratings
-        #userbased_ratings = self.userbased_calculate_ratings(playlist, best.keys, self.userbasedsimilarity, 0.3, builder.get_URM_transpose())
-        #for k in best:
-        #    if k in userbased_ratings:
-        #        best[k] = best[k] + userbased_ratings[k]
+        best = collaborative_ratings
+        userbased_ratings = self.userbased_calculate_ratings(playlist, best.keys, self.userbasedsimilarity, 0.3, builder.get_URM_transpose())
+        for k in userbased_ratings:
+            if k in best:
+                best[k] = best[k] + userbased_ratings[k]
         preSorted = [[v, k] for k,v in best.items()]
         best = np.empty((max(11,len(preSorted)), 2), dtype=object)
         for i in range(len(preSorted)):
