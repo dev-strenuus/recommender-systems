@@ -52,6 +52,8 @@ def evaluate_algorithm(URM_test, recommender_object, builder):
 
     for i in range(len(ordered_target_playlists)):
         
+        if i%1000 == 0:
+            print("ordered:" + str(i))
         user_id = ordered_target_playlists[i]
 
         start_pos = URM_test.indptr[user_id]
@@ -61,7 +63,7 @@ def evaluate_algorithm(URM_test, recommender_object, builder):
 
             relevant_items = URM_test.indices[start_pos:end_pos]
 
-            recommended_items = recommender_object.recommend(user_id,builder)
+            recommended_items = recommender_object.recommend1(user_id,builder)
             num_eval+=1
 
             is_relevant = np.in1d(recommended_items, relevant_items, assume_unique=True)
@@ -70,10 +72,11 @@ def evaluate_algorithm(URM_test, recommender_object, builder):
             cumulative_recall += recall(is_relevant, relevant_items)
             cumulative_MAP += MAP(is_relevant, relevant_items)
             
-    print("ordered finished")
         
     for i in range(len(unordered_target_playlists)):
         
+        if i%1000 == 0:
+            print("unordered:" + str(i))
         user_id = unordered_target_playlists[i]
 
         start_pos = URM_test.indptr[user_id]
@@ -83,7 +86,7 @@ def evaluate_algorithm(URM_test, recommender_object, builder):
 
             relevant_items = URM_test.indices[start_pos:end_pos]
 
-            recommended_items = recommender_object.recommend(user_id,builder)
+            recommended_items = recommender_object.recommend1(user_id,builder)
             num_eval+=1
 
             is_relevant = np.in1d(recommended_items, relevant_items, assume_unique=True)
