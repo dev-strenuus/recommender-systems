@@ -1,6 +1,6 @@
 import random
 import numpy as np
-class hybridRecommender(object):
+class HybridRecommender(object):
 
     def __init__(self, contentSimilarity, collaborativeSimilarity, a, b):
         self.bestSimilarTracks = a*contentSimilarity + b*collaborativeSimilarity
@@ -36,3 +36,26 @@ class hybridRecommender(object):
         best = best[best[:,0].argpartition(10)][0:10]
         best = best[best[:,0].argsort()][:,1]
         return best
+
+    def recommend2(self, playlist, builder):
+        # compute the scores using the dot product
+        playlist_profile = builder.get_URM()[playlist]
+        scores = playlist_profile.dot(self.bestSimilarTracks).toarray().ravel()
+        
+        scores = self.filter_seen(playlist, scores, builder)
+        
+        # rank items
+        ranking = scores.argsort()[::-1]
+        
+        return ranking[:10]
+
+    def filter_seen(self, playlist, scores, builder):
+        
+        start_pos = builder.get_URM()[playlist].indptr[playlist]
+        end_pos = builder.get_URM()[playlist].indptr[playlist+1]
+        
+        user_profile = builder.get_URM()[playlist].indices[start_pos:end_pos]
+        
+        scores[user_profile] = -np.inf
+        
+        return scores
