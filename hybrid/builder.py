@@ -11,6 +11,11 @@ class Builder(object):
         self.train= pd.read_csv('input/train.csv')
         self.target_playlists = pd.read_csv('input/target_playlists.csv')
         self.tracks = pd.read_csv('input/tracks.csv')
+        self.ordered_train=pd.read_csv('input/train_sequential.csv')
+        for playlist in self.ordered_train['playlist_id']:
+            self.train = self.train[self.train.playlist_id!=playlist]
+        self.train = self.train.append(self.ordered_train)
+        print (self.train[self.train['playlist_id']==7]['track_id'])
         self.playlists = self.get_playlists()
         self.tracks_inside_playlists_train = np.empty((len(self.playlists)), dtype=object)
 

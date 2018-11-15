@@ -1,6 +1,9 @@
 import random
 import numpy as np
+<<<<<<< HEAD
 from collections import Counter
+=======
+>>>>>>> 648f29b2b3ba399301c1387166511e4ff45d819c
 class HybridRecommender(object):
 
     def __init__(self, contentSimilarity, collaborativeSimilarity, a, b):
@@ -40,6 +43,7 @@ class HybridRecommender(object):
         best = best[best[:,0].argsort()][:,1]
         return best
 
+<<<<<<< HEAD
     def calculate_rankings(self, matrix, tracks,weight):
         tracksSet = set(tracks)
         best = {}
@@ -92,3 +96,27 @@ class HybridRecommender(object):
         best = best[best[:,0].argsort()][:,1]
         return best
 
+=======
+    def recommend2(self, playlist, builder):
+        # compute the scores using the dot product
+        playlist_profile = builder.get_URM()[playlist]
+        scores = playlist_profile.dot(self.bestSimilarTracks).toarray().ravel()
+        
+        scores = self.filter_seen(playlist, scores, builder)
+        
+        # rank items
+        ranking = scores.argsort()[::-1]
+        
+        return ranking[:10]
+
+    def filter_seen(self, playlist, scores, builder):
+        
+        start_pos = builder.get_URM()[playlist].indptr[playlist]
+        end_pos = builder.get_URM()[playlist].indptr[playlist+1]
+        
+        user_profile = builder.get_URM()[playlist].indices[start_pos:end_pos]
+        
+        scores[user_profile] = -np.inf
+        
+        return scores
+>>>>>>> 648f29b2b3ba399301c1387166511e4ff45d819c
