@@ -2,11 +2,12 @@ import random
 import numpy as np
 class HybridRecommender(object):
 
-    def __init__(self, contentSimilarity, collaborativeSimilarity, userbasedsimilarity, a, b):
+    def __init__(self, contentSimilarity, collaborativeSimilarity, userbasedsimilarity, a, b, builder):
         self.userbasedsimilarity = userbasedsimilarity
         self.contentSimilarity = contentSimilarity
         self.collaborativeSimilarity = collaborativeSimilarity
         self.bestSimilarTracks = a*contentSimilarity + b*collaborativeSimilarity
+        self.URM_transpose =  builder.get_URM_transpose()
         self.cont = -1
     
     def recommend(self, playlist, builder):
@@ -45,6 +46,7 @@ class HybridRecommender(object):
         best = {}
         temp = 1
         minimum = 0
+        q = 1/(len(tracks)+1)**2
         for track in tracks:
             row_start = matrix.indptr[track]
             row_end = matrix.indptr[track+1]
@@ -58,31 +60,37 @@ class HybridRecommender(object):
                         best[similarTracks[i]]=-1*similarityValues[i]*temp
                     minimum = min(minimum, best[similarTracks[i]])
             if self.cont < 5000:
-                temp -= 1/(len(tracks)+1)**2
+                temp -= q
         for k in best:
             best[k] = weight*best[k]/minimum*(-1)
         return best
 
 
-    def userbased_calculate_ratings(self, matrix, tracks, weight):
-        tracksSet = set(tracks)
+    def userbased_calculate_ratings(self, playlist, tracks, matrix, weight, URM_transpose):
         best = {}
-        temp = 1
         minimum = 0
+        row_start = matrix.indptr[playlist]
+        row_end = matrix.indptr[playlist+1]
+        similarPlaylists = matrix.indices[row_start:row_end]
+        similarityValues = matrix.data[row_start:row_end]
+        values = {}
+        for i in range(len(similarPlaylists)):
+            values[similarPlaylists[i]] = similarityValues[i]
+        similarPlaylists = set(similarPlaylists)
         for track in tracks:
-            row_start = matrix.indptr[track]
-            row_end = matrix.indptr[track+1]
-            similarTracks = matrix.indices[row_start:row_end]
-            similarityValues = matrix.data[row_start:row_end]
-            for i in range(0, len(similarTracks)):
-                if not similarTracks[i] in tracksSet:
-                    if similarTracks[i] in best:
-                        best[similarTracks[i]]=best[similarTracks[i]]-similarityValues[i]*temp
-                    else:
-                        best[similarTracks[i]]=-1*similarityValues[i]*temp
-                    minimum = min(minimum, best[similarTracks[i]])
-            if self.cont < 5000:
-                temp -= 1/(len(tracks)+1)
+            row_start = URM_transpose.indptr[track]
+            row_end = URM_transpose.indptr[track+1]
+            playlistsForTrack = set(URM_transpose.indices[row_start:row_end])
+            playlists = similarPlaylists & playlistsForTrack
+            ctrl = False
+            for p in playlists:
+                if ctrl == True:
+                    best[track]=best[track]-values[p]
+                else:
+                    best[track]=-1*values[p]
+                    ctrl = True
+            if track in best:
+                minimum = min(minimum, best[track])
         for k in best:
             best[k] = weight*best[k]/minimum*(-1)
         return best
@@ -99,9 +107,13 @@ class HybridRecommender(object):
         for k in content_ratings:
             if k in collaborative_ratings:
                 collaborative_ratings[k] = collaborative_ratings[k] + content_ratings[k]
+            else:
+                collaborative_ratings[k] = content_ratings[k]
         best = collaborative_ratings
-        #print("best")
-        #print(best)
+        userbased_ratings = self.userbased_calculate_ratings(playlist, best, self.userbasedsimilarity, 0.3, self.URM_transpose)
+        for k in userbased_ratings:
+            if k in best:
+                best[k] = best[k] + userbased_ratings[k]
         preSorted = [[v, k] for k,v in best.items()]
         best = np.empty((max(11,len(preSorted)), 2), dtype=object)
         for i in range(len(preSorted)):

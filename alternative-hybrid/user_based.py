@@ -65,6 +65,7 @@ class HybridRecommender(object):
 
 
     def userbased_calculate_ratings(self, playlist, tracks, matrix, weight, URM_transpose):
+        print("ciao")
         best = {}
         minimum = 0
         row_start = matrix.indptr[playlist]
