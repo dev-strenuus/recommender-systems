@@ -1,0 +1,4 @@
+Artist Weight,Top K Content,Top K Item,Top K User,Hybrid Content,Hybrid Item,Hybrid User,MAP,Online MAP
+0.7,100,100,100,0.1,1,0.3,0.091,X
+0.7,100,100,100,0,1,0.3,0.0899,X
+0.7,200,500,200,0.1,1,0.3,0.0923,0.08658

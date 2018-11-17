@@ -10,7 +10,7 @@ class HybridRecommender(object):
         self.contentSimilarity = contentSimilarity
         self.collaborativeSimilarity = collaborativeSimilarity
         #self.bestSimilarTracks = a*contentSimilarity + b*collaborativeSimilarity
-        self.URM_transpose =  builder.get_URM_transpose_train()
+        self.URM_transpose =  builder.URM_train_transpose
         self.cont = -1
     
     """def recommend(self, playlist, builder):
@@ -103,7 +103,7 @@ class HybridRecommender(object):
 
 
     def recommend1(self, playlist, builder):
-        print(playlist)
+        #print(playlist)
         self.cont = self.cont + 1
         tracks = builder.get_tracks_inside_playlist_train(playlist)
         content_ratings = self.calculate_rankings(self.contentSimilarity, tracks, self.a)
