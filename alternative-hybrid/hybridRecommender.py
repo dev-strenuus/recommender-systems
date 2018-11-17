@@ -2,15 +2,18 @@ import random
 import numpy as np
 class HybridRecommender(object):
 
-    def __init__(self, contentSimilarity, collaborativeSimilarity, userbasedsimilarity, a, b, builder):
+    def __init__(self, contentSimilarity, collaborativeSimilarity, userbasedsimilarity, a, b, c, builder):
+        self.a = a
+        self.b = b
+        self.c = c
         self.userbasedsimilarity = userbasedsimilarity
         self.contentSimilarity = contentSimilarity
         self.collaborativeSimilarity = collaborativeSimilarity
-        self.bestSimilarTracks = a*contentSimilarity + b*collaborativeSimilarity
-        self.URM_transpose =  builder.get_URM_transpose()
+        #self.bestSimilarTracks = a*contentSimilarity + b*collaborativeSimilarity
+        self.URM_transpose =  builder.get_URM_transpose_train()
         self.cont = -1
     
-    def recommend(self, playlist, builder):
+    """def recommend(self, playlist, builder):
         self.cont = self.cont + 1
         tracks = builder.get_tracks_inside_playlist_train(playlist)
         tracksSet = set(tracks)
@@ -39,7 +42,7 @@ class HybridRecommender(object):
             print(best)
         best = best[best[:,0].argpartition(10)][0:10]
         best = best[best[:,0].argsort()][:,1]
-        return best
+        return best"""
 
     def calculate_rankings(self, matrix, tracks,weight):
         tracksSet = set(tracks)
@@ -100,17 +103,18 @@ class HybridRecommender(object):
 
 
     def recommend1(self, playlist, builder):
+        print(playlist)
         self.cont = self.cont + 1
         tracks = builder.get_tracks_inside_playlist_train(playlist)
-        content_ratings = self.calculate_rankings(self.contentSimilarity, tracks, 0.10)
-        collaborative_ratings = self.calculate_rankings(self.collaborativeSimilarity, tracks, 1)
+        content_ratings = self.calculate_rankings(self.contentSimilarity, tracks, self.a)
+        collaborative_ratings = self.calculate_rankings(self.collaborativeSimilarity, tracks, self.b)
         for k in content_ratings:
             if k in collaborative_ratings:
                 collaborative_ratings[k] = collaborative_ratings[k] + content_ratings[k]
             else:
                 collaborative_ratings[k] = content_ratings[k]
         best = collaborative_ratings
-        userbased_ratings = self.userbased_calculate_ratings(playlist, best, self.userbasedsimilarity, 0.3, self.URM_transpose)
+        userbased_ratings = self.userbased_calculate_ratings(playlist, best, self.userbasedsimilarity, self.c, self.URM_transpose)
         for k in userbased_ratings:
             if k in best:
                 best[k] = best[k] + userbased_ratings[k]
@@ -121,9 +125,9 @@ class HybridRecommender(object):
         if len(preSorted) < 11:
             for i in range(len(preSorted), 11):
                 best[i] = [0, random.randint(0, 20000)]
-            print(best)
+            #print(best)
         best = best[best[:,0].argpartition(10)][0:10]
-        if playlist == 7:
-            print(best)
+        #if playlist == 7:
+        #    print(best)
         best = best[best[:,0].argsort()][:,1]
         return best

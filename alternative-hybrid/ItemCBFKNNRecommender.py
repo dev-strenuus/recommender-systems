@@ -18,8 +18,8 @@ class ItemCBFKNNRecommender(object):
         self.W_sparse = similarity_object.compute_similarity()
         
         #print (self.W_sparse)
-        sparse.save_npz('cbsim.npz', self.W_sparse, compressed=True)
-        sparse_matrix = sparse.load_npz('cbsim.npz')
+        #sparse.save_npz('cbsim.npz', self.W_sparse, compressed=True)
+        #sparse_matrix = sparse.load_npz('cbsim.npz')
         #print (sparse_matrix)
         return self.W_sparse
     

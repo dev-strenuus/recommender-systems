@@ -69,8 +69,11 @@ def evaluate_algorithm(URM_test, recommender_object, builder):
             cumulative_precision += precision(is_relevant, relevant_items)
             cumulative_recall += recall(is_relevant, relevant_items)
             cumulative_MAP += MAP(is_relevant, relevant_items)
+            if i == 0:
+                print(recommended_items)
+                print(relevant_items)
             
-    print("ordered finished")
+    #print("ordered finished")
         
     for i in range(len(unordered_target_playlists)):
         

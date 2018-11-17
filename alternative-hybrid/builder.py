@@ -8,7 +8,8 @@ from sklearn import feature_extraction
 class Builder(object):
     
     def __init__(self):
-        self.train= pd.read_csv('input/new_train.csv')
+        self.train= pd.read_csv('input/train_holdout.csv')
+        self.test= pd.read_csv('input/test_holdout.csv')
         self.target_playlists = pd.read_csv('input/target_playlists.csv')
         self.tracks = pd.read_csv('input/tracks.csv')
         #self.ordered_train=pd.read_csv('input/train_sequential.csv')
@@ -17,7 +18,7 @@ class Builder(object):
         #self.train = self.train.append(self.ordered_train)
         #print (self.train[self.train['playlist_id']==7]['track_id'])
         self.playlists = self.get_playlists()
-        self.tracks_inside_playlists_train = np.empty((len(self.playlists)), dtype=object)
+        #self.tracks_inside_playlists_train = np.empty((len(self.playlists)), dtype=object)
 
     def get_train_pd(self):
         return self.train
@@ -35,10 +36,11 @@ class Builder(object):
         return np.array(self.target_playlists['playlist_id'])[5000:]
 
     def get_tracks_inside_playlist_train(self, playlist):
-        return self.tracks_inside_playlists_train[playlist]
+        URM = self.URM_train
+        return URM.indices[URM.indptr[playlist]:URM.indptr[playlist+1]]
     
     
-    def train_test_holdout(self, train_perc):
+    """def train_test_holdout(self, train_perc):
         playlistsSize = len(self.get_playlists())
         tracksSize = len(self.get_tracks())
         target_playlists = self.get_target_playlists()
@@ -49,26 +51,36 @@ class Builder(object):
         URM_train_row = np.empty(0)
         URM_train_col = np.empty(0)
         URM_train_values = np.empty(0)
+        file_train =open("train_holdout.csv",'a')
+        file_train.write("playlist_id,track_id"+"\n")
+        file_test =open("test_holdout.csv",'a')
+        file_test.write("playlist_id,track_id"+"\n")
+        np.random.seed(10)
         for playlist in range(0,playlistsSize):
             tracks = np.array(self.train[self.train['playlist_id']==playlist]['track_id'])
+            train = []
+            test = []
             if cont < len(target_playlists) and playlist == target_playlists[cont]:
+                if cont >= 5000:
+                    np.random.shuffle(tracks)
+                cont = cont + 1
                 train = tracks[0:int(len(tracks)*train_perc)]
                 test = tracks[int(len(tracks)*train_perc):]
-                URM_train_row = np.append(URM_train_row, [playlist]*len(train))
-                URM_train_col = np.append(URM_train_col, train)
-                URM_train_values = np.append(URM_train_values, [1]*len(train))
-                URM_test_row = np.append(URM_test_row, [playlist]*len(test))
-                URM_test_col = np.append(URM_test_col, test)
-                URM_test_values = np.append(URM_test_values, [1]*len(test))
-                cont = cont + 1
-                self.tracks_inside_playlists_train[playlist] = train
             else:
-                URM_train_row = np.append(URM_train_row, [playlist]*len(tracks))
-                URM_train_col = np.append(URM_train_col, tracks)
-                URM_train_values = np.append(URM_train_values, [1]*len(tracks))
+                train = tracks
+            self.tracks_inside_playlists_train[playlist] = train
+            for track in train:
+                file_train.write(str(playlist)+","+str(track)+"\n")
+            for track in test:
+                file_test.write(str(playlist)+","+str(track)+"\n")
+        
+            #else:
+            #    URM_train_row = np.append(URM_train_row, [playlist]*len(tracks))
+            #    URM_train_col = np.append(URM_train_col, tracks)
+            #    URM_train_values = np.append(URM_train_values, [1]*len(tracks))
         self.URM_train = sps.csr_matrix( (URM_train_values,(URM_train_row, URM_train_col)), shape=(playlistsSize, tracksSize))
-        self.URM_test = sps.csr_matrix( (URM_test_values,(URM_test_row, URM_test_col)), shape=(playlistsSize, tracksSize))
-        return self.URM_train, self.URM_test
+        self.URM_test = sps.csr_matrix( (URM_test_values,(URM_test_row, URM_test_col)), shape=(playlistsSize, tracksSize))"""
+        #return self.URM_train, self.URM_test"""
     
     def get_tracks(self):
         tracks = self.tracks['track_id'].unique()
@@ -94,18 +106,20 @@ class Builder(object):
         durations = self.tracks['duration_sec'].unique()
         return np.sort(durations)
     
-    def get_target_playlist_index(self, target_playlist):
-        return np.where(self.playlists == target_playlist)[0][0] #DA RIVEDERE
-    
-    def get_URM(self):
+    def get_URM_test(self):
+        grouped = self.test.groupby('playlist_id', as_index=True).apply(lambda x: list(x['track_id']))
+        self.URM_test = MultiLabelBinarizer(classes=self.get_tracks(), sparse_output=True).transform(grouped)
+        return self.URM_test
+
+    def get_URM_train(self):
         grouped = self.train.groupby('playlist_id', as_index=True).apply(lambda x: list(x['track_id']))
-        self.URM = MultiLabelBinarizer(classes=self.get_tracks(), sparse_output=True).fit_transform(grouped)
-        return self.URM
+        self.URM_train = MultiLabelBinarizer(classes=self.get_tracks(), sparse_output=True).fit_transform(grouped)
+        return self.URM_train
     
-    def get_URM_transpose(self):
+    def get_URM_transpose_train(self):
         grouped = self.train.groupby('track_id', as_index=True).apply(lambda x: list(x['playlist_id']))
-        self.URM = MultiLabelBinarizer(classes=self.get_playlists(), sparse_output=True).fit_transform(grouped)
-        return self.URM
+        self.URM_transpose_train = MultiLabelBinarizer(classes=self.get_playlists(), sparse_output=True).fit_transform(grouped)
+        return self.URM_transpose_train
     
     def get_ICM(self, a):
         artists = self.tracks.reindex(columns=['track_id', 'artist_id'])
