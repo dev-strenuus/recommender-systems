@@ -111,8 +111,8 @@ class HybridRecommender(object):
         for k in content_ratings:
             if k in collaborative_ratings:
                 collaborative_ratings[k] = collaborative_ratings[k] + content_ratings[k]
-            else:
-                collaborative_ratings[k] = content_ratings[k]
+            #else:
+            #    collaborative_ratings[k] = content_ratings[k]
         best = collaborative_ratings
         userbased_ratings = self.userbased_calculate_ratings(playlist, best, self.userbasedsimilarity, self.c, self.URM_transpose)
         for k in userbased_ratings:
